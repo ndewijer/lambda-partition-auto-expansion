@@ -76,6 +76,7 @@ functions:
 
 plugins:
   - serverless-plugin-ssm-document
+  - serverless-python-requirements
 
 custom:
   ssmDocWindows: ssm-partition-expansion-windows
@@ -90,3 +91,5 @@ custom:
     #name: ${self:custom.ssmDocLinux}
     #description: Expand partition on a Linux instance.
     #scriptFile: ./linux_expand.sh
+  pythonRequirements:
+    dockerizePip: non-linux

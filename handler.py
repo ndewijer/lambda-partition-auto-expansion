@@ -30,22 +30,17 @@ def partitionextension(event, context):
     if origVolSize < targVolSize:
         logger.info('origVolSize: %s is smaller than targVolSize: %s. Expanding partition',
                     origVolSize, targVolSize)
-        volSizeIncrease = True
     elif origVolSize > targVolSize:
         logger.info('origVolSize: %s is larger than targVolSize: %s. Stopping',
                     origVolSize, targVolSize)
-        volSizeIncrease = False
         return None
     else:
         logger.warn('Here be dragons.')
-        volSizeIncrease = 'Unknown'
         return None
-
-    if volSizeIncrease == True:
-        volume = ec2.Volume(volumeID)
 
     # Get InstanceID of volume
     try:
+        volume = ec2.Volume(volumeID)
         instanceID = volume.attachments[0]['InstanceId']
 
         logger.info(volume.attachments)
@@ -54,9 +49,10 @@ def partitionextension(event, context):
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidVolume.NotFound':
             logger.error('Volume %s does not exist.', volumeID)
+            return None
         else:
             logger.error("Unexpected error: %s" % e)
-        return None
+            raise Exception()
 
     # Get OS of volume
     try:
@@ -91,7 +87,7 @@ def partitionextension(event, context):
 
     if runCommand == True:
         logger.info('Running expansion %s on instance %s',
-                    os.environ['VolumeDocumentWin'], instanceID)
+                    os.environ['VolumeDocument'], instanceID)
         try:
             executeCommand = ssm.send_command(InstanceIds=[instanceID, ],
                                               DocumentName=os.environ['VolumeDocument'],)
@@ -114,11 +110,11 @@ def partitionextension(event, context):
 
         getCommand = ssm.list_commands(CommandId=executeCommand['Command']['CommandId'],
                                        InstanceId=instanceID, MaxResults=1)
-        getCommandStatus = getCommand['Commands'][0]['Status']
+        getCommandStatus = getCommand['Commands'][0]['StatusDetails']
     else:
         if getCommandStatus == "Success":
             logger.info("SSM job %s completed successfully.",
                         getCommand['Commands'][0]['DocumentName'], )
         else:
             logger.error("SSM job %s failed. Reason: %s",
-                         getCommand['Commands'][0]['DocumentName'], getCommand['Commands'][0]['StatusDetails'])
+                         getCommand['Commands'][0]['DocumentName'], getCommandStatus)
